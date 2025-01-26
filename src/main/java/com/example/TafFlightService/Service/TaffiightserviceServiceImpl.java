@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.util.List;
 
@@ -19,9 +20,14 @@ public class TaffiightserviceServiceImpl implements TaffiightserviceService {
 
     @Override
     public Flight AddNewFlight(Flight flight) {
-        // Send a POST request to the datastore service to add a new flight
-        ResponseEntity<Flight> response = restTemplate.postForEntity(BASE_URL, flight, Flight.class);
-        return response.getBody(); // Return the created flight
+        try {
+            ResponseEntity<Flight> response = restTemplate.postForEntity(BASE_URL, flight, Flight.class);
+            return response.getBody(); // Return the created flight
+        } catch (HttpServerErrorException e) {
+            // Log the error details for debugging
+            System.err.println("Error response from datastore: " + e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to add new flight: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -49,8 +55,20 @@ public class TaffiightserviceServiceImpl implements TaffiightserviceService {
 
     @Override
     public void deleteFlight(Long flightId) {
-        // Send a DELETE request to remove the flight by ID
         String url = BASE_URL + "/" + flightId;
-        restTemplate.delete(url);  // Remove the flight from the datastore service
+        try {
+            // Send DELETE request to remove the flight by ID
+            restTemplate.delete(url); // This will call the DELETE endpoint on the datastore service
+            System.out.println("Flight with ID " + flightId + " deleted successfully.");
+        } catch (HttpServerErrorException e) {
+            // Log the error response for debugging
+            System.err.println("Error response from datastore while deleting flight with ID " + flightId + ": " + e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to delete flight with ID " + flightId + ": " + e.getMessage(), e);
+        } catch (Exception e) {
+            // Handle other exceptions
+            System.err.println("An unexpected error occurred while deleting flight with ID " + flightId + ": " + e.getMessage());
+            throw new RuntimeException("Unexpected error occurred while deleting flight with ID " + flightId, e);
+        }
     }
+
 }
